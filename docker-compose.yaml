@@ -1,0 +1,46 @@
+services:
+  unittest:
+    build: .
+    ports:
+      - "${PORT}:${PORT}"
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  migrateup:
+    image: migrate/migrate
+    command:
+      [
+        "-path",
+        "/migration",
+        "-database",
+        "mysql://${MYSQL_ROOT_USER}:${MYSQL_ROOT_PASSWORD}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/${MYSQL_DATABASE}",
+        "up"
+      ]
+    env_file:
+      - .env
+    volumes:
+      - ./db/migration:/migration
+    links:
+      - mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0.31
+    ports:
+      - "${MYSQL_PORT}:${MYSQL_PORT}"
+    volumes:
+      - mysql-db:/data/db
+    env_file:
+      - .env
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql-db:
